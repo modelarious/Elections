@@ -1,5 +1,6 @@
 # Elections
 Based on a video from Infinite Series called Voting systems and the Condorcet Paradox
+https://www.youtube.com/watch?v=HoAnYQZrNrQ
 
 Demonstrates the differences between multiple approaches to trying to determine the
 winner of an election when the ballots are ranked preferences.
