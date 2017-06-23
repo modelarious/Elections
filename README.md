@@ -9,7 +9,7 @@ compile with make
 
 run resulting files with ./GenerateNames and ./Counts
 
-Modifying the value of BALLOT_SIZE will change the number of candidates available for selection
+Modifying the value of BALLOT_SIZE will change the number of candidates available for selection.
 Modifying the value of and NUM_VOTERS will change the number of ballots that are cast
 
 Currently are two separate programs, but once I get Counts completed, 
