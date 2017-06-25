@@ -23,8 +23,6 @@ http://www.quietaffiliate.com/free-first-name-and-last-name-databases-csv-and-sq
 
 struct Ballot {
 	int votes[BALLOT_SIZE];
-	struct Ballot * ahead;
-	struct Ballot * behind;
 };
 
 struct DefaultBallot {
@@ -402,16 +400,16 @@ void Default_Dot_Product(int a[5][5], int output[5]) {
 
 int Default_Borda_Count(struct DefaultBallot * Ballots[55]) {
 
-		//rows are candidates
+	//rows are candidates
 	//columns are how many times they received each ranking
 	//for example, if there are 3 candidates and 5 voters we might get this Pseudocode:
-	// Results[3][3] = [[0, 0, 5],
-	//                  [2, 3, 0],
-	//                  [3, 2, 0]]
+	// Results[3][3] = [[0, 0, 3],
+	//                  [1, 2, 0],
+	//                  [2, 1, 0]]
 	//which indicates that: 
-	//Candidate 1 received ranking 3 5 times
-	//Candidate 2 received ranking 1 twice and 2 thrice
-	//Candidate 3 received ranking 1 thrice and 2 twice
+	//Candidate 1 received ranking 3, 3 times
+	//Candidate 2 received ranking 1 once and 2 twice
+	//Candidate 3 received ranking 1 twice and 2 once
 	
 	int Results[5][5] ={{0}};
 	for (int i = 0; i < 55; i++) {
