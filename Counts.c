@@ -6,14 +6,20 @@ SQL database from:
 http://www.quietaffiliate.com/free-first-name-and-last-name-databases-csv-and-sql/
 */
 
+//randomly select BALLOT_SIZE permutations of possible ballots, then generate random 
+//numbers in a largish range (0-1000), one for each permutation, then divide all those 
+//numbers by the total, those are the percent chances that that permutation will be chosen
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
 #include <string.h>
-#define BALLOT_SIZE 5
-#define NUM_VOTERS 55
+#define BALLOT_SIZE 12
+#define NUM_VOTERS 560
 
+//Implemented as a struct to allow for easy additions to the ballot if necessary
+//such as name, or maybe some more in depth voter data if this were a more involved
+//simulation
 
 struct Ballot {
 	int votes[BALLOT_SIZE];
@@ -222,28 +228,74 @@ int Two_Round_Runoff(struct Ballot * Ballots[NUM_VOTERS]) {
 	//if we have a majority vote right away, that's the winner
 	float top = Biggest/NUM_VOTERS;
 	if (top >= 0.5) {
-		printf("%d is the Two Round Runoff winner with %f percent of the votes.\n", BiggestPos, top);
-		return BiggestPos;
+		printf("%d is the Two Round Runoff winner with %f percent of the votes.\n", BiggestPos+1, top);
+		return BiggestPos+1;
 	}
 
 	int CandidateOne = 0;
 	int CandidateTwo = 1;
 	int SecondResults[2] = {0};
 	
-	printf("Secondary results with %d as Candidate 1 and %d as Candidate 2:\n", BiggestPos+1, secondBiggestPos+1);
+	printf("Secondary results with Candidate %d now as Candidate 1 and Candidate %d now as Candidate 2:\n", BiggestPos+1, secondBiggestPos+1);
 	
 	Tally_Secondary_Results(Ballots, SecondResults, CandidateOne, CandidateTwo, BiggestPos, secondBiggestPos);
 	Print_Results(SecondResults, 2);
 	
 	if (SecondResults[CandidateOne] >= SecondResults[CandidateTwo] ) {
 		printf("%d is the Two Round Runoff winner\n", BiggestPos+1);
-		return BiggestPos;
+		return BiggestPos+1;
 	}
 	else {
 		printf("%d is the Two Round Runoff winner\n", secondBiggestPos+1);
-		return secondBiggestPos;
+		return secondBiggestPos+1;
 	}
 }
+
+void Dot_Product(int a[BALLOT_SIZE][BALLOT_SIZE], int output[BALLOT_SIZE]) {
+
+	for (int i = 0; i < BALLOT_SIZE; i++) {
+		int total = 0;
+		for (int j = 0; j < BALLOT_SIZE; j++) {
+			total = total + a[i][j] * (BALLOT_SIZE - (j+1));
+		}
+		output[i] = total;
+	}
+}
+
+void Tally_Borda(int Results[BALLOT_SIZE][BALLOT_SIZE], struct Ballot * Ballots[NUM_VOTERS]) {
+	for (int i = 0; i < NUM_VOTERS; i++) {
+		for (int j = 0; j < BALLOT_SIZE; j++) {
+			Results[j][Ballots[i]->votes[j]-1]++;
+		}
+	}
+}
+	
+int Borda_Count(struct Ballot * Ballots[NUM_VOTERS]) {
+
+	//rows are candidates
+	//columns are how many times they received each ranking
+	//for example, if there are 3 candidates and 5 voters we might get this Pseudocode:
+	// Results[3][3] = [[0, 0, 5],
+	//                  [2, 3, 0],
+	//                  [3, 2, 0]]
+	//which indicates that: 
+	//Candidate 1 received ranking 3 5 times
+	//Candidate 2 received ranking 1 twice and 2 thrice
+	//Candidate 3 received ranking 1 thrice and 2 twice
+	
+	printf("\nBorda Count:\n");
+	int Results[BALLOT_SIZE][BALLOT_SIZE] ={{0}};
+	Tally_Borda(Results, Ballots);
+	
+	int DotResult[BALLOT_SIZE];
+	Dot_Product(Results, DotResult);
+	Print_Results(DotResult, BALLOT_SIZE);
+
+	int finalResult = Argmax(DotResult, BALLOT_SIZE);
+	printf("%d is the Borda Count winner\n", finalResult);
+	return finalResult;
+}
+
 
 int Default_Plurality(struct DefaultBallot * Ballots[55]) {
 	int Results[5] ={0};
@@ -303,8 +355,8 @@ int Default_Two_Round_Runoff(struct DefaultBallot * Ballots[55]) {
 	//if we have a majority vote right away, that's the winner
 	float top = Biggest/55;
 	if (top >= 0.5) {
-		printf("%d is the Two Round Runoff winner with %f percent of the votes.\n", BiggestPos, top);
-		return BiggestPos;
+		printf("%d is the Two Round Runoff winner with %f percent of the votes.\n", BiggestPos+1, top);
+		return BiggestPos+1;
 	}
 	
 	int CandidateOne = 0;
@@ -325,13 +377,67 @@ int Default_Two_Round_Runoff(struct DefaultBallot * Ballots[55]) {
 		
 	if (SecondResults[CandidateOne] >= SecondResults[CandidateTwo] ) {
 		printf("%d is the Two Round Runoff winner\n", BiggestPos+1);
-		return BiggestPos;
+		return BiggestPos+1;
 	}
 	else {
 		printf("%d is the Two Round Runoff winner\n", secondBiggestPos+1);
-		return secondBiggestPos;
+		return secondBiggestPos+1;
 	}
 }
+
+//int Default_Instant_Runoff(struct DefaultBallot * Ballots[55]) {
+	
+void Default_Dot_Product(int a[5][5], int output[5]) {
+
+	for (int i = 0; i < 5; i++) {
+		int total = 0;
+		for (int j = 0; j < 5; j++) {
+			total = total + a[i][j] * (5 - (j+1));
+		}
+		output[i] = total;
+	}
+}
+
+int Default_Borda_Count(struct DefaultBallot * Ballots[55]) {
+
+	//rows are candidates
+	//columns are how many times they received each ranking
+	//for example, if there are 3 candidates and 5 voters we might get this Pseudocode:
+	// Results[3][3] = [[0, 0, 3],
+	//                  [1, 2, 0],
+	//                  [2, 1, 0]]
+	//which indicates that: 
+	//Candidate 1 received ranking 3, 3 times
+	//Candidate 2 received ranking 1 once and 2 twice
+	//Candidate 3 received ranking 1 twice and 2 once
+	
+	int Results[5][5] ={{0}};
+	for (int i = 0; i < 55; i++) {
+		for (int j = 0; j < 5; j++) {
+			Results[j][Ballots[i]->votes[j]-1]++;
+		}
+	}
+	
+	int DotResult[5];
+	
+	Default_Dot_Product(Results, DotResult);
+	
+	Print_Results(DotResult, 5);
+	
+	int finalResult = -1;
+	int maxResult = 0;
+	for (int i = 0; i < 5; i++) {
+		if (DotResult[i] > maxResult) {
+			finalResult = i;
+			maxResult = DotResult[i];
+		}
+	}
+	finalResult++;
+	
+	printf("Borda Count winner is %d.\n", finalResult);
+	return finalResult;
+}
+
 
 int main(int argc, char **argv) {
 	struct Ballot * Ballots[NUM_VOTERS];
@@ -339,7 +445,7 @@ int main(int argc, char **argv) {
 	//Print_Array(Ballots);
 	Plurality(Ballots);
 	Two_Round_Runoff(Ballots);
-	
+	Borda_Count(Ballots);
 	//free memory
 	for (int i=0; i < NUM_VOTERS; i++) {
 		free(Ballots[i]);
@@ -353,7 +459,9 @@ int main(int argc, char **argv) {
 	Default_Plurality(Default_Ballots);
 	Default_Two_Round_Runoff(Default_Ballots);
 	
-	for (int i=0; i < NUM_VOTERS; i++) {
+	Default_Borda_Count(Default_Ballots);
+	
+	for (int i=0; i < 55; i++) {
 		free(Default_Ballots[i]);
 	}
 	return 0;
