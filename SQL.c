@@ -3,7 +3,7 @@
 #include <sys/time.h>
 #include <string.h>
 #include <sqlite3.h>
-#define BALLOT_SIZE 30
+#define BALLOT_SIZE 5500000
 #define NUM_VOTERS 100
 
 int Min(int a, int b) {
@@ -109,7 +109,7 @@ int Get_Full_Names(sqlite3 *db, sqlite3_stmt *stmt, char * fullnames[], size_t m
 			for (int i = 0; i < currSize; i++) {
 
 				//+ 2 because we are also adding a space between the words
-				fullnames[i+currSet] = malloc(firstnameLengths[i] + lastnameLengths[i] + 2);
+				fullnames[i+currSet] = calloc(1, firstnameLengths[i] + lastnameLengths[i] + 2);
 				sprintf(fullnames[i+currSet], "%s %s", firstnames[i], lastnames[i]);
 			}
 	}
@@ -159,11 +159,11 @@ int main() {
 		sqlite3_close(db);
 		return -1;
 	}
-	
+	/*
 	for (int i = 0; i < BALLOT_SIZE; i++) {
 		printf("%s\n", fullnames[i]);
 	}
-	
+	*/
 	
 	sqlite3_finalize(stmt);
 	sqlite3_close(db);
