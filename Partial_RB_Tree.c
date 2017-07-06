@@ -3,8 +3,8 @@
 #include <assert.h>
 #include <math.h>
 
-#define BALLOT_SIZE 1000000
-#define MAX_TREE_SIZE 500
+#define BALLOT_SIZE 10000000
+#define MAX_TREE_SIZE 16
 #define NUM_VOTERS 3
 
 #define NO_COLOR -1
@@ -437,9 +437,15 @@ void shuffle(int *array) {
     }
 }
 
+int * Tree_Traverse(NodeP Tree, size_t size) {
+	int * Values = malloc(size*sizeof(int));
+	return Values;
+}
+	
 int main() {
 	if (BALLOT_SIZE > 1000) {
 		
+		printf("Working with %d values\n", BALLOT_SIZE);
 		int numTrees = ceil((float)BALLOT_SIZE/MAX_TREE_SIZE);
 		
 		NodeP * IndexTrees = malloc(numTrees*sizeof(NodeP));
@@ -461,7 +467,7 @@ int main() {
 			Insert(IndexTrees[(int)floor((float)i/MAX_TREE_SIZE)], i);
 		}
 		
-		printf("FINISHED INSERTIONS\n");
+		printf("Finished linear insertion\n");
 		
 		int *randOrd = malloc(BALLOT_SIZE*sizeof(int));
 		if (randOrd == NULL) {
@@ -482,7 +488,7 @@ int main() {
 			Delete(IndexTrees[(int)floor((float)randOrd[i]/MAX_TREE_SIZE)], randOrd[i]);
 		}
 		
-		printf("FINISHED DELETIONS\n");
+		printf("Finished deletions\n");
 		
 		free(randOrd);
 		

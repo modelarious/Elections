@@ -14,20 +14,12 @@ http://www.quietaffiliate.com/free-first-name-and-last-name-databases-csv-and-sq
 #include <stdlib.h>
 #include <sys/time.h>
 #include <string.h>
-#define BALLOT_SIZE 55000
-#define NUM_VOTERS 3
+#define BALLOT_SIZE 1000
+#define NUM_VOTERS 1000
 
 //Implemented as a struct to allow for easy additions to the ballot if necessary
 //such as name, or maybe some more in depth voter data if this were a more involved
 //simulation
-
-/*
-RB tree would be built before starting and then removals made as each candidate 
-is removed from the running, at which point they are deleted from the tree.
-At the start of next round, a tree traversal will be done to determine which 
-candidates still need to be checked. That list will be returned and I'll use 
-each value in the array as an index of which votes to check
-*/
 
 struct Ballot {
 	int votes[BALLOT_SIZE];
@@ -61,7 +53,12 @@ struct DefaultBallot * New_Default_Ballot(int votes[5]) {
 
 struct Ballot * New_Random_Ballot() {
 
-	int * v = malloc(sizeof(int) * BALLOT_SIZE); 
+	int * v = malloc(BALLOT_SIZE*sizeof(int)); 
+	if (v == NULL) {
+		fprintf(stderr, "Couldn't allocate the space for votes in a New Random Ballot\n");
+		exit(-1);
+	}
+	
 	for (int i = 0; i < BALLOT_SIZE; i++) {
 		v[i] = i+1;
 	}
@@ -76,16 +73,14 @@ struct Ballot * New_Random_Ballot() {
 }
 
 void Print_Results(int Results[], size_t len) {
-	/*
 	for (int i = 0; i < len; i++) {
 		printf("Candidate %d: %d\n", i+1, Results[i]);
 	}
 	
-*/
 }
 
 void Print_Default_Array(struct DefaultBallot * Ballots[55]) {
-	/*
+	
 	for (int i = 0; i < 55; i++) {
 		printf("Ballot Number %d:\n", i+1);
 		for (int j = 0; j < 5; j++) {
@@ -93,11 +88,10 @@ void Print_Default_Array(struct DefaultBallot * Ballots[55]) {
 		}
 		printf("\n");
 	}	
-	*/
 }
 
 void Print_Array(struct Ballot * Ballots[NUM_VOTERS]) {
-	/*
+	
 	for (int i = 0; i < NUM_VOTERS; i++) {
 		printf("Ballot Number %d:\n", i+1);
 		for (int j = 0; j < BALLOT_SIZE; j++) {
@@ -105,9 +99,7 @@ void Print_Array(struct Ballot * Ballots[NUM_VOTERS]) {
 		}
 		printf("\n");
 	}	
-	*/
 }
-
 
 void Hold_Default_Election(struct DefaultBallot * Ballots[55]) {
 	//Dataset used in the video
@@ -413,7 +405,7 @@ void Default_Dot_Product(int a[5][5], int output[5]) {
 
 int Default_Borda_Count(struct DefaultBallot * Ballots[55]) {
 
-    //rows are candidates
+	//rows are candidates
 	//columns are how many times they received each ranking
 	//for example, if there are 3 candidates and 5 voters we might get this Pseudocode:
 	// Results[3][3] = [[0, 0, 5],
@@ -422,7 +414,7 @@ int Default_Borda_Count(struct DefaultBallot * Ballots[55]) {
 	//which indicates that: 
 	//Candidate 1 received ranking 3 5 times
 	//Candidate 2 received ranking 1 twice and 2 thrice
-	//Candidate 3 received ranking 1 thrice and 2 twice	
+	//Candidate 3 received ranking 1 thrice and 2 twice
 	
 	int Results[5][5] ={{0}};
 	for (int i = 0; i < 55; i++) {
@@ -435,7 +427,7 @@ int Default_Borda_Count(struct DefaultBallot * Ballots[55]) {
 	
 	Default_Dot_Product(Results, DotResult);
 	
-	Print_Results(DotResult, 5);
+	//Print_Results(DotResult, 5);
 	
 	int finalResult = -1;
 	int maxResult = 0;
@@ -447,7 +439,7 @@ int Default_Borda_Count(struct DefaultBallot * Ballots[55]) {
 	}
 	finalResult++;
 	
-	printf("Borda Count winner is %d.\n", finalResult);
+	printf("%d is the Borda Count winner.\n", finalResult);
 	return finalResult;
 }
 
@@ -455,12 +447,10 @@ int Default_Borda_Count(struct DefaultBallot * Ballots[55]) {
 int main(int argc, char **argv) {
 	struct Ballot * Ballots[NUM_VOTERS];
 	Hold_Election(Ballots);
-	
 	//Print_Array(Ballots);
 	Plurality(Ballots);
-	printf("DOIN GOOD"); fflush(stdout);
 	Two_Round_Runoff(Ballots);
-	Borda_Count(Ballots);
+	//Borda_Count(Ballots);
 	//free memory
 	for (int i=0; i < NUM_VOTERS; i++) {
 		free(Ballots[i]);

@@ -168,6 +168,7 @@ int main() {
 	sqlite3_finalize(stmt);
 	sqlite3_close(db);
 	
+	printf("Completed generation of %d random names\n", BALLOT_SIZE);
 	for (int i = 0; i < BALLOT_SIZE; i++) {
 		free(fullnames[i]);
 	}
