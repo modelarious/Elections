@@ -258,9 +258,10 @@ int * In_Order_Non_Recursive(struct Node* entryPoint) {
 	if (entryPoint == NULL) {
 		return NULL;
 	}
-	int stackSize = ceil((float)log(MAX_SIZE_OF_TREE)/log(2));
-	struct Node* stack = malloc(stackSize * sizeof(Node));
-	
+	//int stackSize = ceil((float)log(MAX_SIZE_OF_TREE)/log(2));
+	//struct Node* stack = malloc(stackSize * sizeof(struct Node));
+
+	return NULL;
 }
 	
 	
@@ -297,6 +298,7 @@ int main()
 
 	
 	//struct Node * Container[numTrees];
+	//int Counts[numTrees]; //keeps track of how many entries are in each tree
 	struct Node ** Container = malloc(numTrees * sizeof(struct Node *));
 
     int lenSeen = ceil(log(MAX_SIZE_OF_TREE)/log(2));
@@ -308,7 +310,6 @@ int main()
  	
  	int size, offset;
 	int * arr = malloc(MAX_SIZE_OF_TREE * sizeof(int));
-	
  	for (int i = 0; i < numTrees; i++) {
  	
  		offset = i*MAX_SIZE_OF_TREE;
