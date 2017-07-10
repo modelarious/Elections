@@ -21,6 +21,7 @@ http://www.quietaffiliate.com/free-first-name-and-last-name-databases-csv-and-sq
 //such as name, or maybe some more in depth voter data if this were a more involved
 //simulation
 
+
 struct Ballot {
 	int votes[BALLOT_SIZE];
 };
@@ -73,14 +74,15 @@ struct Ballot * New_Random_Ballot() {
 }
 
 void Print_Results(int Results[], size_t len) {
+/*
 	for (int i = 0; i < len; i++) {
 		printf("Candidate %d: %d\n", i+1, Results[i]);
 	}
-	
+*/
 }
 
 void Print_Default_Array(struct DefaultBallot * Ballots[55]) {
-	
+/*
 	for (int i = 0; i < 55; i++) {
 		printf("Ballot Number %d:\n", i+1);
 		for (int j = 0; j < 5; j++) {
@@ -88,17 +90,19 @@ void Print_Default_Array(struct DefaultBallot * Ballots[55]) {
 		}
 		printf("\n");
 	}	
+*/
 }
 
 void Print_Array(struct Ballot * Ballots[NUM_VOTERS]) {
-	
+/*
 	for (int i = 0; i < NUM_VOTERS; i++) {
 		printf("Ballot Number %d:\n", i+1);
 		for (int j = 0; j < BALLOT_SIZE; j++) {
 			printf("%d ", Ballots[i]->votes[j]);
 		}
 		printf("\n");
-	}	
+	}
+*/	
 }
 
 void Hold_Default_Election(struct DefaultBallot * Ballots[55]) {
@@ -241,7 +245,7 @@ int Two_Round_Runoff(struct Ballot * Ballots[NUM_VOTERS]) {
 	int CandidateTwo = 1;
 	int SecondResults[2] = {0};
 	
-	printf("Secondary results with Candidate %d now as Candidate 1 and Candidate %d now as Candidate 2:\n", BiggestPos+1, secondBiggestPos+1);
+	//printf("Secondary results with Candidate %d now as Candidate 1 and Candidate %d now as Candidate 2:\n", BiggestPos+1, secondBiggestPos+1);
 	
 	Tally_Secondary_Results(Ballots, SecondResults, CandidateOne, CandidateTwo, BiggestPos, secondBiggestPos);
 	Print_Results(SecondResults, 2);
@@ -463,8 +467,9 @@ int main(int argc, char **argv) {
 	//Print_Default_Array(Default_Ballots);
 	Default_Plurality(Default_Ballots);
 	Default_Two_Round_Runoff(Default_Ballots);
-	
+
 	Default_Borda_Count(Default_Ballots);
+	
 	
 	for (int i=0; i < 55; i++) {
 		free(Default_Ballots[i]);
