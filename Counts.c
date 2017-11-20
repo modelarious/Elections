@@ -10,20 +10,51 @@ http://www.quietaffiliate.com/free-first-name-and-last-name-databases-csv-and-sq
 //numbers in a largish range (0-1000), one for each permutation, then divide all those 
 //numbers by the total, those are the percent chances that that permutation will be chosen
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/time.h>
-#include <string.h>
-#define BALLOT_SIZE 1000
-#define NUM_VOTERS 1000
+
+#include "Build_Balanced_Tree_MULTI.c"
+//#include "Settings.h"
+
+#define SHM_PATH "/tmp/SHMEM"
+
 
 //Implemented as a struct to allow for easy additions to the ballot if necessary
 //such as name, or maybe some more in depth voter data if this were a more involved
 //simulation
 
+//struct internalThreadData * theadData;
+/*
 
+thread_count = ceil(thread_index_range/total_index_range);
+if (MAX_THREAD_COUNT > 0) {
+	thread_count = min(MAX_THREAD_COUNT, thread_count);
+}
+internalThreadData = malloc(thread_count);
+*/
 struct Ballot {
-	int votes[BALLOT_SIZE];
+	int * votes;
+};
+/*
+typedef enum {
+	INIT,
+	IN_PROGRESS,
+	COMPLETE,
+	ERR
+} internal_thread_states_t ;
+*/
+/*
+struct internalThreadData {
+	//internal_thread_states_t internalState;
+	int start_index;
+	int stop_index;
+	int (*functionPtr) (int strt, int stp);
+};
+*/
+
+struct threadData {
+	//internal_thread_states_t internalState;
+	pthread_t tid;
+	int start_index;
+	int stop_index;
 };
 
 struct DefaultBallot {
@@ -48,7 +79,6 @@ struct DefaultBallot * New_Default_Ballot(int votes[5]) {
 	for (int i = 0; i < 5; i++) {
 		New_Ballot->votes[i] = votes[i];
 	}
-	
 	return New_Ballot;
 }
 
@@ -66,10 +96,17 @@ struct Ballot * New_Random_Ballot() {
 	shuffle(v, BALLOT_SIZE);
 	
 	struct Ballot * New_Ballot = malloc(sizeof(struct Ballot));
+	
+	if (New_Ballot == NULL) {
+		fprintf(stderr, "Couldn't allocate enough space for a new ballot\n");
+		exit(-1);
+	}
+	New_Ballot->votes = v;
+	/*
 	for (int j = 0; j < BALLOT_SIZE; j++) {
 		New_Ballot->votes[j] = v[j];
 	}
-	
+	*/
 	return New_Ballot;
 }
 
@@ -140,7 +177,7 @@ void Hold_Default_Election(struct DefaultBallot * Ballots[55]) {
 	}
 }
 
-void Hold_Election(struct Ballot * Ballots[NUM_VOTERS]) {
+void Hold_Election() {
 
 	//get time of day in usec and use it to seed random number generator
 	struct timeval time;
@@ -150,8 +187,73 @@ void Hold_Election(struct Ballot * Ballots[NUM_VOTERS]) {
 
     //cast votes
 	for (int i=0; i < NUM_VOTERS; i++) {
-		Ballots[i] = New_Random_Ballot();
+		for (int j = 0; j < BALLOT_SIZE; j++) {
+			Ballots[i]->votes[j] = j+1;
+		}
+		shuffle(Ballots[i]->votes, BALLOT_SIZE);
 	}
+	
+}
+
+void * cast_votes(void * arg) {
+	struct threadData * vote_info = (struct threadData * ) arg;
+	
+	//cast votes
+	for (int i=vote_info->start_index; i < vote_info->stop_index; i++) {
+		for (int j = 0; j < BALLOT_SIZE; j++) {
+			Ballots[i]->votes[j] = j+1;
+		}
+		shuffle(Ballots[i]->votes, BALLOT_SIZE);
+		
+		//printf("Ballots[%d] contents: %d %d\n", i, Ballots[i]->votes[0], Ballots[i]->votes[1]);
+		
+	}
+	
+	return 0;
+}
+	
+	
+
+void Hold_Election_Multi() {
+
+	int rc;
+
+	//get time of day in usec and use it to seed random number generator
+	struct timeval time;
+    gettimeofday(&time, NULL);
+    int usec = time.tv_usec;
+    srand48(usec);
+    
+    struct threadData * data;
+    data = calloc(numProcessors, sizeof(struct threadData));
+    
+    int interval = ceil(NUM_VOTERS/numProcessors);
+    int start=0;
+    int stop=interval;
+    
+    for (int i=0; i < numProcessors; i++) {
+    	
+    	if (stop >= NUM_VOTERS) {
+    		stop = NUM_VOTERS-1;
+    	}
+    	
+    	assert(start < NUM_VOTERS-1);
+    	
+    	data[i].start_index = start;
+    	data[i].stop_index = stop;
+    	
+    	rc = pthread_create(&data[i].tid, NULL, cast_votes, &data[i]);
+    	if (rc != 0) {
+    		fprintf(stderr, "Error in pthread_create: %d %s\n", errno, strerror(errno));
+    		exit(-1);
+    	}
+    	start += interval;
+    	stop += interval;
+    }
+    
+    for (int i=0; i < numProcessors; i++) {
+    	pthread_join(data[i].tid, NULL);
+    }
 	
 }
 
@@ -260,51 +362,25 @@ int Two_Round_Runoff(struct Ballot * Ballots[NUM_VOTERS]) {
 	}
 }
 
-void Dot_Product(int a[BALLOT_SIZE][BALLOT_SIZE], int output[BALLOT_SIZE]) {
-
-	for (int i = 0; i < BALLOT_SIZE; i++) {
-		int total = 0;
-		for (int j = 0; j < BALLOT_SIZE; j++) {
-			total = total + a[i][j] * (BALLOT_SIZE - (j+1));
-		}
-		output[i] = total;
+int Borda_Count(struct Ballot ** Ballots) {
+	printf("\nBorda Count:\n");
+	int *bordaTotals = calloc(BALLOT_SIZE, sizeof(int));
+	
+	if (bordaTotals == NULL) {
+		fprintf(stderr, "Unable to allocate enough memory for borda totals\n");
+		exit(-1);
 	}
-}
-
-void Tally_Borda(int Results[BALLOT_SIZE][BALLOT_SIZE], struct Ballot * Ballots[NUM_VOTERS]) {
+	
 	for (int i = 0; i < NUM_VOTERS; i++) {
 		for (int j = 0; j < BALLOT_SIZE; j++) {
-			Results[j][Ballots[i]->votes[j]-1]++;
+			bordaTotals[j] = bordaTotals[j] + (BALLOT_SIZE + 1) - Ballots[i]->votes[j];
 		}
 	}
+	
+	printf("%d is the Borda Count winner\n", Argmax(bordaTotals, BALLOT_SIZE));
+	free(bordaTotals);
+	return 0;
 }
-	
-int Borda_Count(struct Ballot * Ballots[NUM_VOTERS]) {
-
-	//rows are candidates
-	//columns are how many times they received each ranking
-	//for example, if there are 3 candidates and 5 voters we might get this Pseudocode:
-	// Results[3][3] = [[0, 0, 5],
-	//                  [2, 3, 0],
-	//                  [3, 2, 0]]
-	//which indicates that: 
-	//Candidate 1 received ranking 3 5 times
-	//Candidate 2 received ranking 1 twice and 2 thrice
-	//Candidate 3 received ranking 1 thrice and 2 twice
-	
-	printf("\nBorda Count:\n");
-	int Results[BALLOT_SIZE][BALLOT_SIZE] ={{0}};
-	Tally_Borda(Results, Ballots);
-	
-	int DotResult[BALLOT_SIZE];
-	Dot_Product(Results, DotResult);
-	Print_Results(DotResult, BALLOT_SIZE);
-
-	int finalResult = Argmax(DotResult, BALLOT_SIZE);
-	printf("%d is the Borda Count winner\n", finalResult);
-	return finalResult;
-}
-
 
 int Default_Plurality(struct DefaultBallot * Ballots[55]) {
 	int Results[5] ={0};
@@ -447,18 +523,142 @@ int Default_Borda_Count(struct DefaultBallot * Ballots[55]) {
 	return finalResult;
 }
 
+int func() {
+	int numTrees = (int)ceil((float)BALLOT_SIZE/MAX_SIZE_OF_TREE);
+	int * Counts = malloc(numTrees * sizeof(int));
+	struct Node ** Containers = run(Counts, numTrees);
+	printf("%d\n", Retrieve(Containers[which(5)], 5)->value);
+	printf("%d\n", Retrieve(Containers[which(101)], 101)->value);
+	printf("%d\n", Counts[0]);
+	
+	int bin;
+	
+	int * treeContents = malloc(BALLOT_SIZE*sizeof(int));
+	full_In_Order_Traversal(treeContents, Counts, numTrees, Containers);
+	for (int j = 0; j < BALLOT_SIZE; j++) {
+		//printf("\nDelete %d\n", j);
+		bin = which(j);
+		if (Delete(Containers[bin], j, Counts) == 0) {
+			//assert(Counts[bin] >= 0);
+		}
+		full_In_Order_Traversal(treeContents, Counts, numTrees, Containers);
+	}
+	
+	for (int i = 0; i < numTrees; i++) {
+		if (Counts[i] != 0) {
+			fprintf(stderr, "Counts[%d] was not 0\n", i);
+			exit(-1);
+		}
+	}
+	
+	
+	for (int i = 0; i < numTrees; i++) {
+		Deforestation(Containers[i]);
+	}
+	
+	return 0;
+}
+
+
+void * thread_func(void * arg) {
+/*
+	struct internalThreadData *ITD = (struct internalThreadData*)arg;
+
+	kill_me:
+		//Signal the main thead that something went wrong
+		//ITD->internalState = ERR;
+		return 0;
+*/
+	return 0;
+}
+		
+
+int Synchronization_Init() {
+	int fd;
+	char shmem_path[100];
+	
+	sprintf(shmem_path, "%s_%d", SHM_PATH, getpid());
+	
+	fd = shm_open(shmem_path, O_CREAT | O_RDWR, 0777);
+	if( fd == -1 ) {
+        fprintf(stderr, "Failure on shm_open call: errNum %d: (%s)\n", errno, strerror(errno));
+        return -1;
+    }
+    
+    if(ftruncate(fd, sizeof(pthread_rwlock_t) * TREE_COUNT) == -1) {
+        fprintf(stderr, "Failure on ftruncate call: errNum %d: (%s)\n", errno, strerror(errno));
+        return -1;
+    }
+
+    rwlocks = mmap(0, sizeof(pthread_rwlock_t) * TREE_COUNT, PROT_WRITE| PROT_READ, MAP_SHARED, fd, 0);
+    if(rwlocks == MAP_FAILED) {
+        fprintf(stderr, "Failure on mmap call: errNum %d: (%s)\n", errno, strerror(errno));
+        return -1;
+    }
+	
+	//create attribute object and make it shared across process spaces
+	pthread_rwlockattr_t attr;
+	pthread_rwlockattr_init(&attr);
+	pthread_rwlockattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+	
+	//allocate space for the rwlocks and initialize them with attr
+	rwlocks = malloc(sizeof(pthread_rwlock_t) * TREE_COUNT);
+	for (int index = 0; index < TREE_COUNT; index++) {
+		pthread_rwlock_init(&rwlocks[index], &attr);
+	}
+	return 0;
+}
+
+	
 
 int main(int argc, char **argv) {
-	struct Ballot * Ballots[NUM_VOTERS];
-	Hold_Election(Ballots);
-	//Print_Array(Ballots);
+    
+    //Initialize the memory outside of the thread functions
+	Ballots = malloc(NUM_VOTERS*sizeof(struct Ballot*));
+	if (Ballots == NULL) {
+		fprintf(stderr, "error on malloc call for Ballots. %d (%s)\n", errno, strerror(errno));
+		exit(-1);
+	}
+	
+	for (int i = 0; i < NUM_VOTERS; i++) {
+		Ballots[i] = malloc(BALLOT_SIZE*sizeof(struct Ballot));
+		if (Ballots[i] == NULL) {
+			fprintf(stderr, "error on malloc call for Ballots. %d (%s)\n", errno, strerror(errno));
+			exit(-1);
+		}
+
+		Ballots[i]->votes = calloc(BALLOT_SIZE, sizeof(int));
+		if (Ballots[i]->votes == NULL) {
+			fprintf(stderr, "Couldn't allocate the space for votes in a New Random Ballot\n");
+			exit(-1);
+		}
+	}
+
+
+	numProcessors = sysconf(_SC_NPROCESSORS_ONLN);
+	if (numProcessors == 1) {
+		/* Run single threaded version */
+		printf("Only one processor?\n");
+		Hold_Election();
+	}
+	else {
+	    /* Run Multi threaded version */
+	    printf("I've detected %ld processors\n", numProcessors);
+	    Synchronization_Init();
+	    Hold_Election_Multi();
+	}
+	
 	Plurality(Ballots);
 	Two_Round_Runoff(Ballots);
-	//Borda_Count(Ballots);
+	Borda_Count(Ballots);
+
 	//free memory
+	
 	for (int i=0; i < NUM_VOTERS; i++) {
 		free(Ballots[i]);
 	}
+	free(Ballots);
+	
 	
 	printf("\nDefaults\n");
 	
@@ -469,10 +669,14 @@ int main(int argc, char **argv) {
 	Default_Two_Round_Runoff(Default_Ballots);
 
 	Default_Borda_Count(Default_Ballots);
-	
+	func();
 	
 	for (int i=0; i < 55; i++) {
 		free(Default_Ballots[i]);
 	}
+	
+	
+	
+	
 	return 0;
 }
