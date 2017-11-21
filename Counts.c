@@ -49,7 +49,14 @@ struct internalThreadData {
 	int (*functionPtr) (int strt, int stp);
 };
 */
-
+/*
+struct shmem_variables {
+	int plurality_winner;
+	int second_winner;
+	int third_winner;
+	int fourth_winner;
+};
+*/
 struct threadData {
 	//internal_thread_states_t internalState;
 	pthread_t tid;
@@ -284,6 +291,66 @@ int Plurality(struct Ballot * Ballots[NUM_VOTERS]) {
 	int Results[BALLOT_SIZE] = {0};
 	Tally_Results(Ballots, Results);
 	Print_Results(Results, BALLOT_SIZE);
+	int finalResult = Argmax(Results, BALLOT_SIZE);
+	if (finalResult <= 0) {
+		perror("Ballots array was blank, Plurality winner couldn't be determined\n");
+		return -1;
+	}
+	printf("%d is the Plurality winner\n\n", finalResult);
+	return finalResult;
+}
+
+void * Tally_Results_Multi(void * arg) {
+	struct threadData * vote_info = (struct threadData * ) arg;
+	
+	//cast votes
+	for (int i=vote_info->start_index; i < vote_info->stop_index; i++) {
+		for (int j = 0; j < BALLOT_SIZE; j++) {
+			if (Ballots[i]->votes[j] == 1) {
+				Results[j]++;
+			}
+		}
+	}
+	
+	return 0;
+}
+
+int Plurality_Multi() {
+	printf("Plurality Multi:\n");
+	int rc;
+	
+	struct threadData * data;
+    data = calloc(numProcessors, sizeof(struct threadData));
+	int interval = ceil(NUM_VOTERS/numProcessors);
+    int start=0;
+    int stop=interval;
+    
+    for (int i=0; i < numProcessors; i++) {
+    	
+    	if (stop >= NUM_VOTERS) {
+    		stop = NUM_VOTERS-1;
+    	}
+    	
+    	assert(start < NUM_VOTERS-1);
+    	
+    	data[i].start_index = start;
+    	data[i].stop_index = stop;
+    	
+    	//Tally_Results_Multi(Results, start, stop);
+    	
+    	rc = pthread_create(&data[i].tid, NULL, Tally_Results_Multi, &data[i]);
+    	if (rc != 0) {
+    		fprintf(stderr, "Error in pthread_create: %d %s\n", errno, strerror(errno));
+    		exit(-1);
+    	}
+    	start += interval;
+    	stop += interval;
+    }
+    
+    for (int i=0; i < numProcessors; i++) {
+    	pthread_join(data[i].tid, NULL);
+    }
+    
 	int finalResult = Argmax(Results, BALLOT_SIZE);
 	if (finalResult <= 0) {
 		perror("Ballots array was blank, Plurality winner couldn't be determined\n");
@@ -576,6 +643,7 @@ void * thread_func(void * arg) {
 int Synchronization_Init() {
 	int fd;
 	char shmem_path[100];
+	int rc;
 	
 	sprintf(shmem_path, "%s_%d", SHM_PATH, getpid());
 	
@@ -598,13 +666,31 @@ int Synchronization_Init() {
 	
 	//create attribute object and make it shared across process spaces
 	pthread_rwlockattr_t attr;
-	pthread_rwlockattr_init(&attr);
-	pthread_rwlockattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+	rc = pthread_rwlockattr_init(&attr);
+	if (rc != 0) {
+		fprintf(stderr, "Failure on pthread_rwlockattr_init. %d (%s)\n", rc, strerror(rc));
+		return -1;
+	}
+	
+	rc = pthread_rwlockattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+	if (rc != 0) {
+		fprintf(stderr, "Failure on pthread_rwlockattr_setpshared. %d (%s)\n", rc, strerror(rc));
+		return -1;
+	}
 	
 	//allocate space for the rwlocks and initialize them with attr
 	rwlocks = malloc(sizeof(pthread_rwlock_t) * TREE_COUNT);
+	if (rwlocks == NULL) {
+		fprintf(stderr, "Failure on malloc of rwlocks. %d (%s)\n", errno, strerror(errno));
+		return -1;
+	}
+	
 	for (int index = 0; index < TREE_COUNT; index++) {
-		pthread_rwlock_init(&rwlocks[index], &attr);
+		rc = pthread_rwlock_init(&rwlocks[index], &attr);
+		if (rc != 0) {
+			fprintf(stderr, "Failure on pthread_rwlock_init index %d. %d (%s)\n", index, rc, strerror(rc));
+			return -1;
+		}
 	}
 	return 0;
 }
@@ -646,6 +732,7 @@ int main(int argc, char **argv) {
 	    printf("I've detected %ld processors\n", numProcessors);
 	    Synchronization_Init();
 	    Hold_Election_Multi();
+	    Plurality_Multi();
 	}
 	
 	Plurality(Ballots);

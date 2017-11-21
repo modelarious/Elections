@@ -29,3 +29,5 @@ long numProcessors;
 
 //global variable that holds all of the votes
 struct Ballot ** Ballots;
+
+int Results[BALLOT_SIZE] = {0};
